@@ -25,7 +25,7 @@ class GpsData(object):
                 print("===============")
                 print("sats: " + str(self.num_sats))
                 print("alt: " + str(self.alt) + " ft")
-                print("lat: " + str(self.lat) + " " + self.lon_dir)
+                print("lat: " + str(self.lat) + " " + self.lat_dir)
                 print("lon: " + str(self.lon) + " " + self.lon_dir)
                 print("time: " + str(self.timestamp))
 
