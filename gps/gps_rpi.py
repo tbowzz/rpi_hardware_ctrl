@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
 import serial
-import Adafruit_BBIO.UART as UART
-import pynmea2
+# Abandoning in python for now because RPi.GPIO doesn't yet support UART
+# from RPi.GPIO import *
+# import pynmea2
 import sys
 
 # http://navspark.mybigcommerce.com/content/NMEA_Format_v0.1.pdf
@@ -11,8 +12,8 @@ import sys
 M_TO_FT = 0.328084
 LATLON_CONVERT = 100.0
 
-UART.setup("UART1")
-GPS = serial.Serial('/dev/ttyO1', 9600)
+# UART.setup("UART1")
+GPS = serial.Serial('/dev/ttyAMA0', baudrate=9600)
 
 class GpsData(object):
         def __init__(self):
@@ -36,7 +37,8 @@ def main():
                 while GPS.inWaiting()==0:
                         pass
                 NMEA=GPS.readline()
-                parse_gps(NMEA)
+                print(NMEA)
+                # parse_gps(NMEA)
 
 def parse_gps(nmea):
         if "GNRMC" in nmea:
