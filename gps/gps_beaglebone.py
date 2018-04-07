@@ -40,9 +40,12 @@ def main():
 
 def parse_gps(nmea):
         if "GNRMC" in nmea:
-                # TODO: get speed from this
-                # msg = pynmea2.parse(nmea)
-                # print(str(msg))
+                data = str(nmea).split(',')
+                if data[2] is 'A': # if data is valid
+                        speed = data[7]
+                        if float(speed) < 1.5:
+                                speed = 0.0
+                        print("speed: " + str(speed) + " mph")
                 return
         elif "GNGGA" not in nmea:
                 # we don't need these other strings
@@ -52,16 +55,22 @@ def parse_gps(nmea):
                 data = GpsData()
                 data.num_sats = msg.num_sats
                 data.alt = msg.altitude / M_TO_FT
+
                 data.lat_dir = str(msg.lat_dir)
                 data.lon_dir = str(msg.lon_dir)
-                if data.lat_dir is "N":
-                        data.lat = float(msg.lat) / LATLON_CONVERT
-                else:
-                        data.lat = (float(msg.lat) / LATLON_CONVERT) * -1
-                if data.lon_dir is "E":
-                        data.lon = float(msg.lon) / LATLON_CONVERT
-                else:
-                        data.lon = (float(msg.lon) / LATLON_CONVERT) * -1
+
+                lat_dec_degrees = int(float(msg.lat)/100)
+                lat_sec = float(msg.lat) - lat_dec_degrees * 100
+                data.lat = lat_dec_degrees + lat_sec / 60
+                if data.lat_dir is "S":
+                        data.lat *= -1
+
+                lon_dec_degrees = int(float(msg.lon)/100)
+                lon_sec = float(msg.lon) - lon_dec_degrees * 100
+                data.lon = lon_dec_degrees + lon_sec / 60
+                if data.lon_dir is "W":
+                        data.lon *= -1
+
                 data.timestamp = msg.timestamp
 
                 data.print_data()
