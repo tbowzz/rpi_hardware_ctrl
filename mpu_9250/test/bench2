@@ -1,0 +1,168 @@
+//
+// Created by Tyler Bowers on 4/8/18.
+//
+
+#include "I2cDevice.h"
+
+I2cDevice::I2cDevice()
+{
+
+}
+
+int I2cDevice::i2cInit(std::string device, uint8_t address)
+{
+    mDevice = device;
+    mAddress = address;
+    if (i2cOpen() != OK)
+    {
+        return ERROR;
+    }
+    if (i2cSetAddress(mAddress) != OK)
+    {
+        return ERROR;
+    }
+    
+    uint8_t whoami;
+    i2cRead(&whoami, 2, 0x75);  // Read WHO_AM_I register for MPU-9250
+    // char output[2];
+    // sprintf(output, "%x", whoami);
+    // UTIL.debug->info("I2C: Address is 0x" + UTIL.toString(output));
+    // UTIL.debug->info("I2C: Address should be 0x70");
+
+    return OK;
+}
+
+int I2cDevice::i2cOpen()
+{
+    mFd = open(mDevice.c_str(), O_RDWR);
+
+    if (mFd < 0)
+    {
+        UTIL.luke->error("I2C: Unable to open device " + mDevice);
+        return ERROR;
+    }
+    else
+    {
+        UTIL.luke->info("I2C: Connected to " + mDevice);
+        i2cSetAddress(mAddress);
+        return OK;
+    }
+}
+
+int I2cDevice::i2cSetAddress(uint8_t address)
+{
+    if (ioctl(mFd, I2C_SLAVE, address) < 0)
+    {
+        UTIL.luke->error("I2C: Unable to set address.");
+        i2cClose();
+        return ERROR;
+    }
+    UTIL.debug->debug("I2C: Address set to ...");
+    return OK;
+}
+
+int I2cDevice::i2cVerifyAddress(uint8_t address)
+{
+    if (address != mAddress)
+    {
+        return ERROR;
+    }
+    return OK;
+}
+
+void I2cDevice::i2cClose()
+{
+    int ret = close(mFd);
+    if (!ret)
+    {
+        UTIL.debug->info("I2C: Device closed.");
+    }
+}
+
+int I2cDevice::i2cWrite(uint8_t data, size_t count, uint8_t address)
+{
+    if (i2cVerifyAddress(address) != OK)
+    {
+        if (i2cSetAddress(address) != OK)
+        {
+            return ERROR;
+        }
+    }
+    char data_write[3];
+    data_write[0] = address;
+    data_write[1] = data;
+    int ret = write(mFd, data_write, count);
+    if (ret != OK)
+    {
+        UTIL.debug->info("I2C: Problem writing to address. Write return value: " + UTIL.toString(ret));
+        return ERROR;
+    }
+    return OK;
+}
+
+int I2cDevice::i2cRead(uint8_t *data, size_t count, uint8_t address)
+{
+    if (i2cVerifyAddress(address) != OK)
+    {
+        if (i2cSetAddress(address) != OK)
+        {
+            return ERROR;
+        }
+    }
+    void *buf = (void*) data;
+    int ret = read(mFd, buf, count);
+    if (ret != OK)
+    {
+        UTIL.debug->info("I2C: Problem reading from 0xTODO. Read return value: " + UTIL.toString(ret));
+        return ERROR;
+    }
+    return OK;
+}
+
+void I2cDevice::writeByte(uint8_t address, uint8_t subAddress, uint8_t data)
+{
+   char data_write[2];
+   data_write[0] = subAddress;
+   data_write[1] = data;
+//    i2c.write(mAddress, data_write, 2, 0);
+}
+
+char I2cDevice::readByte(uint8_t address, uint8_t subAddress)
+{
+    char data[1]; // `data` will store the register data     
+    char data_write[1];
+    data_write[0] = subAddress;
+    // i2c.write(mAddress, data_write, 1, 1); // no stop
+    // i2c.read(mAddress, data, 1, 0); 
+    return data[0]; 
+}
+
+void I2cDevice::readBytes(uint8_t address, uint8_t subAddress, uint8_t count, uint8_t *dest)
+{     
+    char data[14];
+    char data_write[1];
+    data_write[0] = subAddress;
+    // i2c.write(mAddress, data_write, 1, 1); // no stop
+    // i2c.read(mAddress, data, count, 0); 
+    for(int ii = 0; ii < count; ii++)
+    {
+        dest[ii] = data[ii];
+    }
+
+    // unsigned char buffer[60] = {0};
+    // //----- READ BYTES -----
+	// int length = count;			//<<< Number of bytes to read
+	// if (read(m_i2c_fd, buffer, length) != length)		//read() returns the number of bytes actually read, if it doesn't match then an error occurred (e.g. no response from the device)
+	// {
+	// 	//ERROR HANDLING: i2c transaction failed
+	// 	UTIL.luke->error("I2C: Failed to read from the i2c bus.");
+	// }
+	// else
+	// {
+    //     char str[128];
+    //     sprintf(str, "%s", buffer);
+	// 	UTIL.debug->info("I2C: Data read: " + str);
+	// }
+
+    // dest = buffer;
+} 
