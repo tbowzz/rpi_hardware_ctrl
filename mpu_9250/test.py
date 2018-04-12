@@ -58,39 +58,40 @@ address = 0x68       # This is the address value read via the i2cdetect command
 # Wake it up since it starts in sleep mode
 bus.write_byte_data(address, power_mgmt_1, 0)
 
+
 while True:
-	print "------------------"
-	print "\nGYRO"
-	gyro_xout = read_word_2c(GYRO_X)
-	gyro_yout = read_word_2c(GYRO_Y)
-	gyro_zout = read_word_2c(GYRO_Z)
+    print "------------------"
+    print "\nGYRO"
+    gyro_xout = read_word_2c(GYRO_X)
+    gyro_yout = read_word_2c(GYRO_Y)
+    gyro_zout = read_word_2c(GYRO_Z)
 
-	print "gyro_xout: ", gyro_xout, " scaled: ", (GYRO_SCALE(gyro_xout))
-	print "gyro_yout: ", gyro_yout, " scaled: ", (GYRO_SCALE(gyro_yout))
-	print "gyro_zout: ", gyro_zout, " scaled: ", (GYRO_SCALE(gyro_zout))
+    print "gyro_xout: ", gyro_xout, " scaled: ", (GYRO_SCALE(gyro_xout))
+    print "gyro_yout: ", gyro_yout, " scaled: ", (GYRO_SCALE(gyro_yout))
+    print "gyro_zout: ", gyro_zout, " scaled: ", (GYRO_SCALE(gyro_zout))
 
-	print "ACCELEROMETER"
-	accel_xout = read_word_2c(ACCEL_X)
-	accel_yout = read_word_2c(ACCEL_Y)
-	accel_zout = read_word_2c(ACCEL_Z)
+    print "ACCELEROMETER"
+    accel_xout = read_word_2c(ACCEL_X)
+    accel_yout = read_word_2c(ACCEL_Y)
+    accel_zout = read_word_2c(ACCEL_Z)
 
-	accel_xout_scaled = ACCEL_SCALE(accel_xout)
-	accel_yout_scaled = ACCEL_SCALE(accel_yout)
-	accel_zout_scaled = ACCEL_SCALE(accel_zout)
+    accel_xout_scaled = ACCEL_SCALE(accel_xout)
+    accel_yout_scaled = ACCEL_SCALE(accel_yout)
+    accel_zout_scaled = ACCEL_SCALE(accel_zout)
 
-	print "accel_xout: ", str(accel_xout).rjust(8), " scaled: {0:.6f}".format(accel_xout_scaled)
-	print "accel_yout: ", str(accel_yout).rjust(8), " scaled: {0:.6f}".format(accel_yout_scaled)
-	print "accel_zout: ", str(accel_zout).rjust(8), " scaled: {0:.6f}".format(accel_zout_scaled)
-	
-	print "ROTATION"
-	print "x: " , get_x_rotation(accel_xout_scaled, accel_yout_scaled, accel_zout_scaled)
-	print "y: " , get_y_rotation(accel_xout_scaled, accel_yout_scaled, accel_zout_scaled)
+    print "accel_xout: ", str(accel_xout).rjust(8), " scaled: {0:.6f}".format(accel_xout_scaled)
+    print "accel_yout: ", str(accel_yout).rjust(8), " scaled: {0:.6f}".format(accel_yout_scaled)
+    print "accel_zout: ", str(accel_zout).rjust(8), " scaled: {0:.6f}".format(accel_zout_scaled)
 
-	print "TEMPERATURE"
-	temp_out = read_word_2c(TEMP)
+    print "ROTATION"
+    print "x: " , get_x_rotation(accel_xout_scaled, accel_yout_scaled, accel_zout_scaled)
+    print "y: " , get_y_rotation(accel_xout_scaled, accel_yout_scaled, accel_zout_scaled)
 
-	# This is wrong...
-	print "temp: ", (temp_out / 6.85)
-	
-	print "------------------"
-	time.sleep(1)
+    print "TEMPERATURE"
+    temp_out = read_word_2c(TEMP)
+
+    # This is wrong...
+    print "temp: ", (temp_out / 6.85)
+
+    print "------------------"
+    time.sleep(0.5)
