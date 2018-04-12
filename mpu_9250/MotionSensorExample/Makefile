@@ -10,7 +10,7 @@ inc = inc
 
 debug = 1
 
-CFlags = -std=c++11 -Wall -c -DMPU6500 -DMPU_DEBUG -I../libs/
+CFlags = -c -DMPU6500 -DMPU_DEBUG -I../libs/
 LDFlags = -pthread
 libs =
 libDir =
