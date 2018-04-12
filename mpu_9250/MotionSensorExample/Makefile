@@ -1,34 +1,81 @@
-CXX=g++
-CXXFLAGS= -Wall -g -O2
-CXX_OPTS= -Wall -g -O2
+# CLIENT MAKEFILE #
 
-INSTALL=install
+app = mpu
 
-PROG=mstest
+srcExt = cpp
+srcDir = src
+objDir = obj
+binDir = bin
+inc = inc
 
-%.o: %.c                                                                         
-	$(CXX) $(CXXFLAGS) $(CXX_OPTS) $< -o $@ 
+debug = 1
+
+CFlags = -std=c++11 -Wall -c -DMPU6500 -DMPU_DEBUG -I../libs/
+LDFlags = -pthread
+libs =
+libDir =
 
 
-all: $(PROG).o 
-	$(CXX) $(LDFLAGS) $(CXXFLAGS) -o $(PROG) \
-		main.c \
-		MotionSensor/libMotionSensor.a \
-		libs/libI2Cdev.a
+#************************ DO NOT EDIT BELOW THIS LINE! ************************
 
-$(PROG).o: MotionSensor/libMotionSensor.a libs/libI2Cdev.a
+ifeq ($(debug),1)
+	debug=-g
+else
+	debug=
+endif
+inc := $(addprefix -I,$(inc))
+libs := $(addprefix -l,$(libs))
+libDir := $(addprefix -L,$(libDir))
+CFlags += -c $(debug) $(inc) $(libDir) $(libs)
+sources := $(shell find $(srcDir) -name '*.$(srcExt)')
+srcDirs := $(shell find . -name '*.$(srcExt)' -exec dirname {} \; | uniq)
+objects := $(patsubst %.$(srcExt),$(objDir)/%.o,$(sources))
 
-MotionSensor/libMotionSensor.a:
-	$(MAKE) -C MotionSensor/ 
+ifeq ($(srcExt),cpp)
+	CC = $(CXX)
+else
+	CFlags += -std=c++11
+endif
 
-libs/libI2Cdev.a:
-	$(MAKE) -C libs/I2Cdev
+.phony: all clean distclean
 
-install1:
-	$(INSTALL) -m 755 $(PROG) $(DESTDIR)/usr/local/bin/
+
+all: $(binDir)/$(app)
+
+$(binDir)/$(app): buildrepo $(objects)
+	@mkdir -p `dirname $@`
+	@echo "Linking $@..."
+	@$(CC) $(objects) $(LDFlags) -o $@
+
+$(objDir)/%.o: %.$(srcExt)
+	@echo "Generating dependencies for $<..."
+	@$(call make-depend,$<,$@,$(subst .o,.d,$@))
+	@echo "Compiling $<..."
+	@$(CC) $(CFlags) $< -o $@
 
 clean:
-	cd MotionSensor && $(MAKE) clean
-	cd libs/I2Cdev && $(MAKE) clean
-	rm -rf *.o *~ *.mod
-	rm -rf $(PROG)
+	$(RM) -r $(objDir)
+
+distclean: clean
+	$(RM) -r $(binDir)/$(app)
+
+buildrepo:
+	@$(call make-repo)
+
+define make-repo
+   for dir in $(srcDirs); \
+   do \
+	mkdir -p $(objDir)/$$dir; \
+   done
+endef
+
+
+# usage: $(call make-depend,source-file,object-file,depend-file)
+define make-depend
+  $(CC) -MM       \
+        -MF $3    \
+        -MP       \
+        -MT $2    \
+        $(CFlags) \
+        $1
+endef
