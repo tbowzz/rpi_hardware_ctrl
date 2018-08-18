@@ -6,7 +6,7 @@ import time
 # Yellow led    pin 23
 # Red led       pin 24
 
-# 330Ohm resisters from ground to short side of leds
+# 330 Ohm resisters from ground to short side of leds
 # jumpers from pin n to long side of leds
 
 GREEN = 18
@@ -25,17 +25,17 @@ while True:
     io.output(GREEN, io.HIGH)
     io.output(YLW, io.LOW)
     io.output(RED, io.LOW)
-    time.sleep(DELAY)
+    time.sleep(2)
     io.output(GREEN, io.LOW)
     io.output(YLW, io.HIGH)
     io.output(RED, io.LOW)
-    time.sleep(DELAY)
+    time.sleep(1)
     io.output(GREEN, io.LOW)
     io.output(YLW, io.LOW)
     io.output(RED, io.HIGH)
-    time.sleep(DELAY)
-    io.output(GREEN, io.LOW)
-    io.output(YLW, io.HIGH)
-    io.output(RED, io.LOW)
-    time.sleep(DELAY)
+    time.sleep(10)
+    # io.output(GREEN, io.LOW)
+    # io.output(YLW, io.HIGH)
+    # io.output(RED, io.LOW)
+    # time.sleep(DELAY)
 
