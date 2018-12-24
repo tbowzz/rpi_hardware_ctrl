@@ -4,8 +4,8 @@ import Adafruit_ADS1x15
 # Channel definitions
 YAW = 0
 THROTTLE = 1
-ROLL = 2
-PITCH = 3
+PITCH = 2
+ROLL = 3
 
 # Offsets
 YAW_OFFSET = -131
@@ -43,7 +43,8 @@ def run(controller):
         values[THROTTLE] = calc_position(read_controller(THROTTLE), THROTTLE_OFFSET)
         values[ROLL] = calc_position(read_controller(ROLL), ROLL_OFFSET)
         values[PITCH] = calc_position(read_controller(PITCH), PITCH_OFFSET)
-        print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*values))
+        # print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*values))
+        print("{} | {} | {} | {}".format(values[YAW], values[THROTTLE], values[ROLL], values[PITCH]))
         # time.sleep(0.1)
 
 if __name__ == "__main__":
