@@ -1,5 +1,7 @@
 import time
 import Adafruit_ADS1x15
+import os
+import struct
 
 # Channel definitions
 YAW = 0
@@ -16,7 +18,14 @@ DIVISOR = 100
 
 GAIN = 1
 
+fifo_name = "/tmp/ctrl_fifo"
+
 def init():
+    try:
+        os.mkfifo(fifo_name)
+    except FileExistsError:
+        pass
+
     return Adafruit_ADS1x15.ADS1115()
 
 def _normalize_position(adjusted_read_value):
@@ -33,9 +42,10 @@ def read_controller(channel):
 
 def run(controller):
     # Print nice channel column headers.
-    print('|    YAW |  THRTL |   ROLL |  PITCH |')
-    print('-' * 37)
+    # print('|    YAW |  THRTL |   ROLL |  PITCH |')
+    # print('-' * 37)
     values = [0]*4
+
     # Main loop.
     while True:
         # Read all the controller channel values in a list.
@@ -43,9 +53,12 @@ def run(controller):
         values[THROTTLE] = calc_position(read_controller(THROTTLE), THROTTLE_OFFSET)
         values[ROLL] = calc_position(read_controller(ROLL), ROLL_OFFSET)
         values[PITCH] = calc_position(read_controller(PITCH), PITCH_OFFSET)
-        # print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*values))
-        print("{} | {} | {} | {}".format(values[YAW], values[THROTTLE], values[ROLL], values[PITCH]))
-        # time.sleep(0.1)
+        # output = "{} | {} | {} | {}".format(values[YAW], values[THROTTLE], values[ROLL], values[PITCH])
+        # print(output)
+        with open(fifo_name, 'wb') as f:
+            buf = struct.pack('%sf' % len(values), *values)
+            f.write(buf)
+        # time.sleep(1)
 
 if __name__ == "__main__":
     controller = init()
