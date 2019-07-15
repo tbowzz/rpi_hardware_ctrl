@@ -1,0 +1,3 @@
+[submodule "esc/esc_lib/Utilities"]
+	path = esc/esc_lib/Utilities
+	url = https://github.com/tbowzz/Utilities.git
