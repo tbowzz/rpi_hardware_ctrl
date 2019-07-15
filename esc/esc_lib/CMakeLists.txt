@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.7)
 project(esc_lib)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS -pthread)
 
 include_directories(.)
 
