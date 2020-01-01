@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <linux/ip.h>
 #include <linux/udp.h>
+#include <unistd.h>
 
 #pragma pack(push,1)
 struct PacketHeader
@@ -61,7 +62,7 @@ const uint8_t mac[6] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab };
  *
  */
 const char * to = "255.255.255.255";
-const char * from = "169.254.1.1";
+const char * from = "10.0.0.54";
 
 /**
  * Radiotap is a protocol of sorts that is used to convey information about the
@@ -103,7 +104,8 @@ static const uint8_t u8aRadiotapHeader[] = {
    * IEEE80211_RADIOTAP_F_FCS, meaning we want the card to add a FCS at the end
    * of our buffer for us.
    */
-  0x10,
+  0x00, // Changed to NOT set it
+  // 0x10,
 
   0x00, // <-- rate
   0x00, 0x00, 0x00, 0x00, // <-- channel
@@ -160,16 +162,8 @@ int main(void) {
   char errbuf[PCAP_ERRBUF_SIZE];
   pcap_t *ppcap;
 
-  int count = 0;
-  PacketHeader packetHeader;
-  packetHeader.definition = 0x08;
-  packetHeader.packetType = 0x11;
-  packetHeader.payloadLength = 0;
-  packetHeader.sequenceNumber = ++count;
-  uint8_t myPacket[PKT_HEADER_SIZE];
-  memcpy(myPacket, &packetHeader, PKT_HEADER_SIZE);
   /* Total buffer size (note the 0 bytes of data and the 4 bytes of FCS */
-//   sz = sizeof(u8aRadiotapHeader) + sizeof(struct ieee80211_hdr) + sizeof(ipllc) + sizeof(struct iphdr) + sizeof(struct udphdr) + 0 /* data */ + 4 /* FCS */;
+  // sz = sizeof(u8aRadiotapHeader) + sizeof(struct ieee80211_hdr) + sizeof(ipllc) + sizeof(struct iphdr) + sizeof(struct udphdr) + 0 /* data */ + 4 /* FCS */;
   sz = sizeof(u8aRadiotapHeader) + sizeof(struct ieee80211_hdr) + sizeof(ipllc) + sizeof(struct iphdr) + sizeof(struct udphdr) + PKT_HEADER_SIZE /* data */ + 4 /* FCS */;
   buf = (uint8_t *) malloc(sz);
 
@@ -252,8 +246,8 @@ int main(void) {
   ip->tos      = 0x0;
   ip->id       = 0;
   ip->frag_off = htons(0x4000); /* Don't fragment */
-  ip->ttl      = 64;
-  ip->tot_len  = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + 0 /* data */);
+  ip->ttl      = 0x40; // 64 decimal
+  ip->tot_len  = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + PKT_HEADER_SIZE /* data */);
   ip->protocol = IPPROTO_UDP;
   ip->saddr    = saddr.sin_addr.s_addr;
   ip->daddr    = daddr.sin_addr.s_addr;
@@ -265,8 +259,6 @@ int main(void) {
   ip->check    = 0; 
   ip->check    = inet_csum(ip, sizeof(struct iphdr));
 
-  // packet payload
-
   /**
    * The UDP header is refreshingly simple.
    * Again, notice the little-endianness of ->len
@@ -274,10 +266,18 @@ int main(void) {
    */
   udp->source  = saddr.sin_port;
   udp->dest    = daddr.sin_port;
-  udp->len     = htons(sizeof(struct udphdr) + 0 /* data */);
+  udp->len     = htons(sizeof(struct udphdr) + PKT_HEADER_SIZE /* data */);
   udp->check   = 0;
 
-  data = myPacket;
+  int count = 0;
+  PacketHeader *packetHeader;
+  packetHeader->definition = 0x08;
+  packetHeader->packetType = 0x11;
+  packetHeader->payloadLength = 0;
+  packetHeader->sequenceNumber = count;
+  // uint8_t myPacket[PKT_HEADER_SIZE];
+  memcpy(data, packetHeader, PKT_HEADER_SIZE);
+  // data = myPacket;
 
   /**
    * Finally, we have the packet and are ready to inject it.
@@ -286,15 +286,28 @@ int main(void) {
   ppcap = pcap_open_live("wlan1", 800, 1, 20, errbuf);
 
   if (ppcap == NULL) {
-    printf("Could not open interface wlan0 for packet injection: %s", errbuf);
+    printf("Could not open interface wlan1 for packet injection: %s", errbuf);
     return 2;
   }
 
   /**
    * Then we send the packet and clean up after ourselves
    */
-  if (pcap_sendpacket(ppcap, buf, sz) == 0) {
-    printf("Packet sent!\n");
+
+  int ret = 0;
+  int attempts = 300;
+  while ((ret = pcap_sendpacket(ppcap, buf, sz)) == 0 && attempts)
+  {
+    sleep(2);
+    packetHeader->payloadLength = attempts;
+    packetHeader->sequenceNumber = ++count;
+    memcpy(data, packetHeader, PKT_HEADER_SIZE);
+    for (unsigned int ii = 0; ii < sz; ii++) {}
+    attempts--;
+  }
+
+  if (ret == 0) {
+    printf("Closing successfully.\n");
     pcap_close(ppcap);
     return 0;
   }
