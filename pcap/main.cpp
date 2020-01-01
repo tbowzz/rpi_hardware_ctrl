@@ -101,34 +101,6 @@ struct PacketHeader
 
 #define PKT_HEADER_SIZE sizeof(PacketHeader)
 
-void another_callback(u_char *arg, const struct pcap_pkthdr* pkthdr, const u_char* packet)
-{
-    int i=0;
-    static int count=0;
-
-    if (pkthdr->len >= PKT_HEADER_SIZE && pkthdr->len <= 240)
-    {
-        // printf("Packet Count: %d\n", ++count);    /* Number of Packets */
-        printf("Received Packet Size: %d\n", pkthdr->len);    /* Length of header */
-
-        PacketHeader header;
-        memcpy(&header, &packet, PKT_HEADER_SIZE);
-
-        printf("header.definition: %d\n", header.definition);
-        printf("header.packetType: %d\n", header.packetType);
-        printf("header.payloadLength: %d\n", header.payloadLength);
-    }
-    // printf("Payload:\n");                     /* And now the data */
-    // for(i=0;i<pkthdr->len;i++) {
-    //     if(isprint(packet[i]))                /* Check if the packet data is printable */
-    //         printf("%c ",packet[i]);          /* Print it */
-    //     else
-    //         printf(" . ",packet[i]);          /* If not print a . */
-    //     if((i%16==0 && i!=0) || i==pkthdr->len-1)
-    //         printf("\n");
-    // }
-}
-
 void handle_packet(u_char *arg, const struct pcap_pkthdr* pkthdr, const u_char* packet)
 {
     	static int count = 1;                   /* packet counter */
@@ -249,7 +221,7 @@ int main(int argc,char **argv)
     bpf_u_int32 netp;             /* ip */
 
     if(argc != 2){
-        fprintf(stdout, "Usage: %s \"expression\"\n"
+        fprintf(stdout, "Usage: %s <interface>\n"
             ,argv[0]);
         return 0;
     }
@@ -265,31 +237,31 @@ int main(int argc,char **argv)
 
     printf("The interfaces present on the system are:\n");
     std::string name;
+    std::string desiredName(argv[1]);
     for(temp=interfaces;temp;temp=temp->next)
     {
-        printf("%d  :  %s\n", i++, temp->name);
+        printf("%d  :  \"%s\"\n", i++, temp->name);
         std::string tmpName(temp->name);
-        name = tmpName;
-        if (name.compare("eth0") == 0)
+        if (tmpName.compare(desiredName) == 0)
         {
             printf("Selected %s\n", temp->name);
+            name = tmpName;
             break;
         }
     }
-    // dev = pcap_lookupdev(errbuf);
 
     if(!name.size())
     {
-        fprintf(stderr, "%s\n", errbuf);
+        printf("No device found with name \"%s\"\n", argv[1]);
         exit(1);
     }
+
     printf("Device: %s\n", name.c_str());
         /* Get the network address and mask */
     pcap_lookupnet(name.c_str(), &netp, &maskp, errbuf);
 
     /* open device for reading in promiscuous mode */
     descr = pcap_open_live(name.c_str(), BUFSIZ, 1,-1, errbuf);
-    printf("descr: %s\n", descr);
     if(descr == NULL)
     {
         printf("pcap_open_live(): %s\n", errbuf);
@@ -297,7 +269,7 @@ int main(int argc,char **argv)
     }
 
     /* Now we'll compile the filter expression*/
-    if(pcap_compile(descr, &fp, argv[1], 0, netp) == -1) {
+    if(pcap_compile(descr, &fp, "ip", 0, netp) == -1) {
         fprintf(stderr, "Error calling pcap_compile\n");
         exit(1);
     }
