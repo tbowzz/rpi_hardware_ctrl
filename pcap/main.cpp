@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/if_ether.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
 
 #define PKTDEF_STATUS        0x01
 #define PKTDEF_GPS           0x02
@@ -34,24 +36,8 @@ struct sniff_ethernet {
         u_short ether_type;                     /* IP? ARP? RARP? etc */
 };
 
-/* IP header */
-struct sniff_ip {
-        u_char  ip_vhl;                 /* version << 4 | header length >> 2 */
-        u_char  ip_tos;                 /* type of service */
-        u_short ip_len;                 /* total length */
-        u_short ip_id;                  /* identification */
-        u_short ip_off;                 /* fragment offset field */
-        #define IP_RF 0x8000            /* reserved fragment flag */
-        #define IP_DF 0x4000            /* dont fragment flag */
-        #define IP_MF 0x2000            /* more fragments flag */
-        #define IP_OFFMASK 0x1fff       /* mask for fragmenting bits */
-        u_char  ip_ttl;                 /* time to live */
-        u_char  ip_p;                   /* protocol */
-        u_short ip_sum;                 /* checksum */
-        struct  in_addr ip_src,ip_dst;  /* source and dest address */
-};
-#define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
-#define IP_V(ip)                (((ip)->ip_vhl) >> 4)
+#define IP_HL(ip)               (((ip)->version) & 0x0f)
+#define IP_V(ip)                (((ip)->version) >> 4)
 
 struct sniff_udp {
     uint16_t        uh_sport;      /* source port */
@@ -103,32 +89,28 @@ struct PacketHeader
 
 void handle_packet(u_char *arg, const struct pcap_pkthdr* pkthdr, const u_char* packet)
 {
-    	static int count = 1;                   /* packet counter */
-	
 	/* declare pointers to packet headers */
-	const struct sniff_ethernet *ethernet;  /* The ethernet header [1] */
-	const struct sniff_ip *ip;              /* The IP header */
-	const struct sniff_udp *udp;            /* The UDP header */
+	const struct iphdr *ip;              /* The IP header */
+	const struct udphdr *udp;            /* The UDP header */
 	const char *payload;                    /* Packet payload */
 
 	int size_ip;
 	int size_payload;
-	
-	/* define ethernet header */
-	ethernet = (struct sniff_ethernet*)(packet);
-	
+
 	/* define/compute ip header offset */
-	ip = (struct sniff_ip*)(packet + SIZE_ETHERNET);
+    static int index = 68;
+	ip = (struct iphdr*)(packet + index);
+
 	size_ip = IP_HL(ip)*4;
-	if (size_ip < 20) {
-		printf("   * Invalid IP header length: %u bytes\n", size_ip);
+	if (size_ip < 16) {
+		printf("   * Invalid IP header length: %d bytes\n", size_ip);
 		return;
 	}
 	
 	/* determine protocol */	
-	switch(ip->ip_p) {
+	switch(ip->protocol) {
 		case IPPROTO_TCP:
-			// printf("   Protocol: TCP\n");
+			printf("   Protocol: TCP\n");
 			return;
 		case IPPROTO_UDP:
 			// printf("   Protocol: UDP\n");
@@ -148,62 +130,56 @@ void handle_packet(u_char *arg, const struct pcap_pkthdr* pkthdr, const u_char* 
 	 *  OK, this packet is UDP.
 	 */
 
+//     struct udphdr {
+// 	__be16	source;
+// 	__be16	dest;
+// 	__be16	len;
+// 	__sum16	check;
+// };
+
     /* define/compute tcp header offset */
-	udp = (struct sniff_udp*)(packet + SIZE_ETHERNET + SIZE_UDP);
-    int destPort = ntohs(udp->uh_dport);
+	udp = (struct udphdr*)(packet + index + sizeof(iphdr));
+    int destPort = ntohs(udp->dest);
     // if (destPort != 24902)
     // {
     //     return;
     // }
 
-    std::string srcIp(inet_ntoa(ip->ip_src));
-    std::string destIp(inet_ntoa(ip->ip_dst));
-    if (srcIp.compare("10.0.0.54") != 0 || destIp.compare("10.0.0.167"))
+    struct in_addr ip_addr;
+    ip_addr.s_addr = ip->saddr;
+    std::string srcIp(inet_ntoa(ip_addr));
+    ip_addr.s_addr = ip->daddr;
+    std::string destIp(inet_ntoa(ip_addr));
+    if (srcIp.compare("10.0.0.54") != 0)// || destIp.compare("10.0.0.167"))
     {
         return;
     }
-
-    printf("\nPacket number %d:\n", count);
-	count++;
-    /* print source and destination IP addresses */
-	printf("       From: %s\n", inet_ntoa(ip->ip_src));
-	printf("         To: %s\n", inet_ntoa(ip->ip_dst));
-	printf("   Src port: %d\n", ntohs(udp->uh_sport));
-	printf("   Dst port: %d\n", ntohs(udp->uh_dport));
 	
 	/* define/compute udp payload (segment) offset */
-	payload = (const char *)(packet + SIZE_ETHERNET + size_ip + SIZE_UDP);
+	// payload = (const char *)(packet + SIZE_ETHERNET + size_ip + SIZE_UDP);
+    payload = (const char *)(packet + index + sizeof(iphdr) + sizeof(udphdr));
 	
 	/* compute udp payload (segment) size */
-	size_payload = ntohs(ip->ip_len) - (size_ip + SIZE_UDP);
-    if (size_payload > ntohs(udp->uh_ulen))
+	size_payload = ntohs(ip->tot_len) - (size_ip + SIZE_UDP);
+    if (size_payload > ntohs(udp->len))
     {
-        size_payload = ntohs(udp->uh_ulen);
+        size_payload = ntohs(udp->len);
     }
-    printf("   Packet size: %d\n", size_payload);
 
-
-    if (size_payload >= PKT_HEADER_SIZE && size_payload <= 240)
+    if (size_payload >= PKT_HEADER_SIZE)
     {
         PacketHeader header;
         memcpy(&header, payload, PKT_HEADER_SIZE);
-
-        if (header.definition <= 0x08)
-        {
-            printf("   header.definition: %d\n", header.definition);
-            printf("   header.packetType: %d\n", header.packetType);
-            printf("   header.payloadLength: %d\n", header.payloadLength);
-        }
+        printf("\nNew packet received:\n");
+        printf("   header.definition: %d\n", header.definition);
+        printf("   header.packetType: %d\n", header.packetType);
+        printf("   header.payloadLength: %d\n", header.payloadLength);
+        printf("   header.sequenceNumber: %d\n", header.sequenceNumber);
     }
-	
-	/*
-	 * Print payload data; it might be binary, so don't just
-	 * treat it as a string.
-	 */
-	// if (size_payload > 0) {
-	// 	printf("   Payload (%d bytes):\n", size_payload);
-	// 	print_payload(payload, size_payload);
-	// }
+    else
+    {
+        printf("Invalid PacketHeader size %d\n", size_payload);
+    }
 
 	return;
 }
